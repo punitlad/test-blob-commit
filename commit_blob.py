@@ -59,10 +59,7 @@ class RepositoryService:
         try:
             contents = self.repo.get_contents(source_ref, "main")
             is_diff = Path(filename).read_text() != contents.decoded_content.decode('ascii')
-            if is_diff:
-                print("Changes found")
-            else:
-                print("No changes found")
+            print("Changes found") if is_diff else print("No changes found")
             return is_diff
         except UnknownObjectException:
             print("New file")
@@ -75,6 +72,8 @@ if __name__ == '__main__':
     token = os.environ['GITHUB_TOKEN']
     updated_files = os.environ['UPDATED_FILES']  # comma separated list
     source_refs = os.environ['SOURCE_REFS']  # comma separated list
+    circle_project_reponame = os.environ['CIRCLE_PROJECT_REPONAME']
+    circle_build_number = os.environ['CIRCLE_BUILD_NUM']
 
     print('ORG: %s' % org)
     print('REPO: %s' % repo)
@@ -82,8 +81,13 @@ if __name__ == '__main__':
     print('SOURCE_REF: %s' % source_refs)
 
     repository = RepositoryService(org, repo, token)
-    commit = repository.create_commit(updated_files.split(","), source_refs.split(","), "main",
-                                      "its me making another commit")
+    commit = repository.create_commit(
+        updated_files.split(","),
+        source_refs.split(","),
+        "main",
+        'push from %s build %s' % (circle_project_reponame, circle_build_number)
+    )
+
     if commit is not None:
         print("Committing changes.")
         repository.publish_tree(commit, "main")
