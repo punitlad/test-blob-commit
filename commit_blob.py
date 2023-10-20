@@ -11,10 +11,8 @@ from github import UnknownObjectException
 
 class RepositoryService:
     def __init__(self, org, repo, token):
-        self.org = org
-        self.repo_name = repo
         g = Github(auth=(Auth.Token(token)))
-        self.repo = g.get_repo('%s/%s' % (self.org, self.repo_name))
+        self.repo = g.get_repo('%s/%s' % (org, repo))
 
     def create_blob(self, file):
         updated_contents = Path(file).read_text()
