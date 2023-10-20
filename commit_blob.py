@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
+from pprint import pprint
 
 from github import Auth
 from github import GitCommit
 from github import Github
 from github import InputGitTreeElement
+from github import UnknownObjectException
 
 
 class RepositoryService:
@@ -25,21 +27,26 @@ class RepositoryService:
 
     def create_commit(self, updated_files, source_file_references, branch, message) -> GitCommit:
         blobs = []
-        for file in updated_files:
-            blobs.append(self.create_blob(file))
+        for index, filename in enumerate(updated_files):
+            if self.is_diff(filename, source_file_references[index]):
+                blobs.append({"blob": self.create_blob(filename), "source_ref": source_file_references[index]})
 
         base_tree = self.repo.get_git_tree(branch, True)
 
         tree_elements = []
-        for index, source_file_ref in enumerate(source_file_references):
-            tree_element = self.create_tree_element(source_file_ref, blobs[index].sha)
-            tree_elements.append(tree_element)
+        if blobs:
+            print("in here")
+            for blob in blobs:
+                tree_element = self.create_tree_element(blob["source_ref"], blob["blob"].sha)
+                tree_elements.append(tree_element)
 
-        git_tree = self.repo.create_git_tree(tree_elements, base_tree)
-        print("Creating git commit {} from tree on branch {}".format(base_tree.sha, branch))
-        return self.repo.create_git_commit(
-            message, git_tree, [self.repo.get_git_commit(base_tree.sha)]
-        )
+            git_tree = self.repo.create_git_tree(tree_elements, base_tree)
+            print("Creating git commit {} from tree on branch {}".format(base_tree.sha, branch))
+            return self.repo.create_git_commit(
+                message, git_tree, [self.repo.get_git_commit(base_tree.sha)]
+            )
+        else:
+            return None
 
     def publish_tree(self, commit, branch):
         git_ref = self.repo.get_git_ref("heads/{}".format(branch))
@@ -47,21 +54,38 @@ class RepositoryService:
         print("Committing to {} with sha {}".format(git_ref.ref, commit.sha))
         git_ref.edit(commit.sha)
 
+    def is_diff(self, filename, source_ref):
+        print("Diffing {} against {}...".format(filename, source_ref), end="")
+        try:
+            contents = self.repo.get_contents(source_ref, "main")
+            is_diff = Path(filename).read_text() != contents.decoded_content.decode('ascii')
+            if is_diff:
+                print("Changes found")
+            else:
+                print("No changes found")
+            return is_diff
+        except UnknownObjectException:
+            print("New file")
+            return True
+
 
 if __name__ == '__main__':
     org = os.environ['ORG']
     repo = os.environ['REPO']
     token = os.environ['GITHUB_TOKEN']
-    updated_files = os.environ['UPDATED_FILES'] # comma separated list
-    source_ref = os.environ['SOURCE_REFS'] # comma separated list
+    updated_files = os.environ['UPDATED_FILES']  # comma separated list
+    source_refs = os.environ['SOURCE_REFS']  # comma separated list
 
-    print('debug')
     print('ORG: %s' % org)
     print('REPO: %s' % repo)
+    print('UPDATED_FILES: %s' % updated_files)
+    print('SOURCE_REF: %s' % source_refs)
 
     repository = RepositoryService(org, repo, token)
-    commit = repository.create_commit(updated_files.split(","),
-                                      source_ref.split(","),
-                                      "main",
+    commit = repository.create_commit(updated_files.split(","), source_refs.split(","), "main",
                                       "its me making another commit")
-    repository.publish_tree(commit, "main")
+    if commit is not None:
+        print("Committing changes.")
+        repository.publish_tree(commit, "main")
+    else:
+        print("No changes. Skipping commit")
