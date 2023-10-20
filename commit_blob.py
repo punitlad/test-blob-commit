@@ -17,12 +17,12 @@ class RepositoryService:
 
     def create_blob(self, file):
         updated_contents = Path(file).read_text()
-        return self.repo.create_git_blob(updated_contents, "utf-8")
+        return self.repo.create_git_blob(updated_contents, 'utf-8')
 
     @staticmethod
     def create_tree_element(path, sha):
         print('Adding {} to tree with sha {}'.format(path, sha))
-        return InputGitTreeElement(path, '100644', "blob", sha=sha)
+        return InputGitTreeElement(path, '100644', 'blob', sha=sha)
 
     def create_commit(self, updated_files, source_file_references, branch, message) -> GitCommit:
         blobs = []
@@ -65,27 +65,17 @@ class RepositoryService:
 
 
 if __name__ == '__main__':
-    org = os.environ['ORG']
-    repo = os.environ['REPO']
-    updated_files = os.environ['UPDATED_FILES']  # comma separated list
-    source_refs = os.environ['SOURCE_REFS']  # comma separated list
-    circle_project_reponame = os.environ['CIRCLE_PROJECT_REPONAME']
-    circle_build_number = os.environ['CIRCLE_BUILD_NUM']
-
-    print('UPDATED_FILES: %s' % updated_files)
-    print('SOURCE_REF: %s' % source_refs)
-
-    repository = RepositoryService(org, repo, os.environ['GITHUB_TOKEN'])
+    repository = RepositoryService(os.environ['ORG'], os.environ['REPO'], os.environ['GITHUB_TOKEN'])
     commit = repository.create_commit(
-        updated_files.split(","),
-        source_refs.split(","),
-        "main",
-        'push from %s build %s' % (circle_project_reponame, circle_build_number)
+        os.environ['UPDATED_FILES'].split(','),
+        os.environ['SOURCE_REFS'].split(','),
+        'main',
+        'push from %s build %s' % ((os.environ['CIRCLE_PROJECT_REPONAME']), (os.environ['CIRCLE_BUILD_NUM']))
     )
 
     if commit is not None:
-        print('Committing changes...', end="")
-        repository.publish_tree(commit, "main")
+        print('Committing changes...', end='')
+        repository.publish_tree(commit, 'main')
         print('Committed')
     else:
         print('No changes. Skipping commit')
