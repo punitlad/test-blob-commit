@@ -2,9 +2,9 @@ import os
 from pathlib import Path
 
 from github import Auth
+from github import GitCommit
 from github import Github
 from github import InputGitTreeElement
-from github import GitCommit
 
 
 class RepositoryService:
@@ -52,14 +52,16 @@ if __name__ == '__main__':
     org = os.environ['ORG']
     repo = os.environ['REPO']
     token = os.environ['GITHUB_TOKEN']
+    updated_files = os.environ['UPDATED_FILES'] # comma separated list
+    source_ref = os.environ['SOURCE_REFS'] # comma separated list
 
     print('debug')
     print('ORG: %s' % org)
     print('REPO: %s' % repo)
 
     repository = RepositoryService(org, repo, token)
-    commit = repository.create_commit(["README.md", "some_file.txt"],
-                                      ["README.md", "subfolder/some_file.txt"],
+    commit = repository.create_commit(updated_files.split(","),
+                                      source_ref.split(","),
                                       "main",
                                       "its me making another commit")
     repository.publish_tree(commit, "main")
