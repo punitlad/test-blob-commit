@@ -10,9 +10,11 @@ from github import UnknownObjectException
 
 
 class RepositoryService:
-    def __init__(self, org, repo, token):
-        g = Github(auth=(Auth.Token(token)))
-        self.repo = g.get_repo('%s/%s' % (org, repo))
+    def __init__(self, org_name, repo_name, auth_token):
+        g = Github(auth=(Auth.Token(auth_token)))
+        org_repo = '%s/%s' % (org_name, repo_name)
+        print("Setting Github repository connectivity to {}".format(org_repo))
+        self.repo = g.get_repo(org_repo)
 
     def create_blob(self, file):
         updated_contents = Path(file).read_text()
@@ -33,7 +35,6 @@ class RepositoryService:
 
         tree_elements = []
         if blobs:
-            print("in here")
             for blob in blobs:
                 tree_element = self.create_tree_element(blob["source_ref"], blob["blob"].sha)
                 tree_elements.append(tree_element)
@@ -67,18 +68,15 @@ class RepositoryService:
 if __name__ == '__main__':
     org = os.environ['ORG']
     repo = os.environ['REPO']
-    token = os.environ['GITHUB_TOKEN']
     updated_files = os.environ['UPDATED_FILES']  # comma separated list
     source_refs = os.environ['SOURCE_REFS']  # comma separated list
     circle_project_reponame = os.environ['CIRCLE_PROJECT_REPONAME']
     circle_build_number = os.environ['CIRCLE_BUILD_NUM']
 
-    print('ORG: %s' % org)
-    print('REPO: %s' % repo)
     print('UPDATED_FILES: %s' % updated_files)
     print('SOURCE_REF: %s' % source_refs)
 
-    repository = RepositoryService(org, repo, token)
+    repository = RepositoryService(org, repo, os.environ['GITHUB_TOKEN'])
     commit = repository.create_commit(
         updated_files.split(","),
         source_refs.split(","),
